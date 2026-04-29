@@ -15,8 +15,15 @@ jobs:
 
       - name: Sync Tags from Upstream
         env:
-          UPSTREAM_URL: ${{ github.event.repository.parent.clone_url || github.event.repository.clone_url }}
+          PARENT_URL: ${{ github.event.repository.parent.clone_url }}
+          REPO_URL: ${{ github.event.repository.clone_url }}
         run: |
+          if [ -n "$PARENT_URL" ]; then
+            UPSTREAM_URL="$PARENT_URL"
+          else
+            UPSTREAM_URL="$REPO_URL"
+          fi
+
           echo "Upstream URL: $UPSTREAM_URL"
 
           git remote remove upstream 2>/dev/null || true
