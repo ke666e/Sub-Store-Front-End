@@ -3,9 +3,13 @@ name: Sync Tags
 on:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   sync:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -13,21 +17,25 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Sync Tags from Upstream
+      - name: Get upstream repo
+        id: upstream
         env:
-          PARENT_URL: ${{ github.event.repository.parent.clone_url }}
-          REPO_URL: ${{ github.event.repository.clone_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if [ -n "$PARENT_URL" ]; then
-            UPSTREAM_URL="$PARENT_URL"
-          else
-            UPSTREAM_URL="$REPO_URL"
+          UPSTREAM_URL=$(gh api "repos/${GITHUB_REPOSITORY}" --jq '.parent.clone_url // empty')
+
+          if [ -z "$UPSTREAM_URL" ]; then
+            echo "This repository does not seem to be a fork, or parent repo was not found."
+            exit 1
           fi
 
           echo "Upstream URL: $UPSTREAM_URL"
+          echo "url=$UPSTREAM_URL" >> "$GITHUB_OUTPUT"
 
+      - name: Sync Tags from Upstream
+        run: |
           git remote remove upstream 2>/dev/null || true
-          git remote add upstream "$UPSTREAM_URL"
+          git remote add upstream "${{ steps.upstream.outputs.url }}"
 
-          git fetch upstream --tags
-          git push origin --tags
+          git fetch upstream '+refs/tags/*:refs/tags/*'
+          git push origin '+refs/tags/*:refs/tags/*'
