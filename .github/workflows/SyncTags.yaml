@@ -1,4 +1,5 @@
 name: Sync Tags
+
 on:
   workflow_dispatch:
 
@@ -11,8 +12,15 @@ jobs:
         with:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Sync Tags from Upstream
+        env:
+          UPSTREAM_URL: ${{ github.event.repository.parent.clone_url || github.event.repository.clone_url }}
         run: |
-          git remote add upstream https://github.com/sub-store-org/Sub-Store.git
+          echo "Upstream URL: $UPSTREAM_URL"
+
+          git remote remove upstream 2>/dev/null || true
+          git remote add upstream "$UPSTREAM_URL"
+
           git fetch upstream --tags
           git push origin --tags
